@@ -1,37 +1,39 @@
-$booksDir = "c:\\Users\\conma\\OneDrive\\Downloads\\Telegram Desktop"
-$calibreDir = "C:\\Program Files\\Calibre2"
-$calibreCommand = "ebook-meta.exe"
-$readMeta = $calibreDir + "\\" + $calibreCommand
-$oldEnc = [System.Text.Encoding]::GetEncoding('cp866')
+$booksDir = "c:\Users\conma\OneDrive\Downloads\Telegram Desktop"
+$destDir = "c:\Users\conma\temp\"
+$readMeta = "C:\Program Files\Calibre2\ebook-meta.exe"
+
+$oldEnc = [System.Text.Encoding]::GetEncoding('utf-8')
 $newEnc = [System.Text.Encoding]::GetEncoding('windows-1251')
-# $oldEnc = [System.Text.Encoding]::UTF8
 
-foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -First 5) {
-   $oldEncStr = &$readMeta $file.FullName
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $readMeta
+$psi.RedirectStandardOutput = $true
+$psi.UseShellExecute = $false
+$psi.StandardOutputEncoding = $oldEnc
 
-   Write-Host "Old Encoding" $oldEncStr
+foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -First 10) {
+   # Start ebook-meta.exe to get file metadata
+   $psi.Arguments = '"' + $file.FullName + '"'
+   $proc = [System.Diagnostics.Process]::Start($psi)
+   $oldEncStr = $proc.StandardOutput.ReadToEnd()
+   $proc.WaitForExit()
 
-   #$bookInfoBytes = [System.Text.Encoding]::GetEncoding('cp866').GetBytes($bookInfoStr866)
+   # Decode ebook-meta.exe output from utf-8 to windows-1251
    $oldEncBytes = $oldEnc.GetBytes($oldEncStr)
    $newEncBytes = [System.Text.Encoding]::Convert($oldEnc, $newEnc, $oldEncBytes)
-   $newEncChars = $newEnc.GetChars($newEncBytes)
-   $newEncStr = -join $newEncChars
+   $newEncStr = $newEnc.GetString($newEncBytes)
+   
+   $newEncStr -split "`r`n" | ForEach-Object {
+      if (-not [System.String]::IsNullOrWhiteSpace($_)) {
+         $infoLine = $_ -split ":", 2
+         switch ($infoLine[0].Trim()) {
+            "Title" { $title = $infoLine[1].Trim() }
+            "Author(s)" { $author = $infoLine[1].Trim() }
+            "Published" { $year = $infoLine[1].Substring(1, 4) }
+         }
+      }
+   }
 
-   Write-Host "New Encoding" $newEncStr
-   Write-Host "----------------------------------------------------"
-
-   $bookInfo = &$readMeta $file.FullName | ConvertFrom-String -Delimiter ':' -PropertyNames Key, Value
-   $bookInfo
-
-   # Write-Host "----------------------------------------------------"
-   # foreach ($infoLine in $bookInfo) {
-   #    switch ($infoLine.Key.Trim()) {
-   #       "Title" { $title = $infoLine.Value.Trim() }
-   #       "Author(s)" { $author = $infoLine.Value.Trim() }
-   #       "Published" { $year = $infoLine.Value.Substring(1, 4) }
-   #    }
-   # }
-   # $string = $title + " [" + $year + "] " + $author
-   # Write-Host $string
-   Write-Host "-------------------endbook---------------------------------"
+   $string = 'copy "' + $file.FullName + '" "' + $destDir + $title + ' [' + $year + '] ' + $author + $file.Extension + '"'
+   Write-Host "-Cmd-" $string
 }
