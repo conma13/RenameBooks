@@ -22,7 +22,7 @@ if (-not (Test-Path -Path $destDir)) {
    exit
 }
 if (-not (Test-Path -Path $($destDir + $notRenamedFolder))) {
-   New-Item -ItemType Directory -Path $($destDir + $notRenamedFolder)
+   New-Item -ItemType Directory -Path $($destDir + $notRenamedFolder) | Out-Null
 }
 
 $oldEnc = [System.Text.Encoding]::GetEncoding('utf-8')
