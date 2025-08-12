@@ -1,6 +1,10 @@
+# Source folder: where to get books
 $booksDir = "c:\Users\conma\OneDrive\Downloads\Telegram Desktop"
+# Destination folder: where to copy renamed books
 $destDir = "d:\---temp\"
+# Full path to ebook-meta.exe file from Calibre
 $readMeta = "C:\Program Files\Calibre2\ebook-meta.exe"
+# The name of the folder where to copy books which we can not rename
 $notRenamedFolder = "not-renamed"
 
 if (-not (Test-Path -Path $booksDir)) {
