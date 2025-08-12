@@ -1,6 +1,25 @@
 $booksDir = "c:\Users\conma\OneDrive\Downloads\Telegram Desktop"
-$destDir = "c:\Users\conma\temp\"
+$destDir = "d:\---temp\"
 $readMeta = "C:\Program Files\Calibre2\ebook-meta.exe"
+$notRenamedFolder = "not-renamed"
+
+if (-not (Test-Path -Path $booksDir)) {
+   Write-Host "Books folder is not found:" $booksDir
+   exit
+}
+
+if (-not (Test-Path -Path $readMeta)) {
+   Write-Host "Calibre utility is not found:" $readMeta
+   exit
+}
+
+if (-not (Test-Path -Path $destDir)) {
+   Write-Host "Destination folder is not found:" $destDir
+   exit
+}
+if (-not (Test-Path -Path $($destDir + $notRenamedFolder))) {
+   New-Item -ItemType Directory -Path $($destDir + $notRenamedFolder)
+}
 
 $oldEnc = [System.Text.Encoding]::GetEncoding('utf-8')
 $newEnc = [System.Text.Encoding]::GetEncoding('windows-1251')
@@ -23,8 +42,10 @@ foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -
    $newEncBytes = [System.Text.Encoding]::Convert($oldEnc, $newEnc, $oldEncBytes)
    $newEncStr = $newEnc.GetString($newEncBytes)
    
+   # Split multiline string into separate lines
    $newEncStr -split "`r`n" | ForEach-Object {
       if (-not [System.String]::IsNullOrWhiteSpace($_)) {
+         # Split the line by the colon into a title and a value.
          $infoLine = $_ -split ":", 2
          switch ($infoLine[0].Trim()) {
             "Title" { $title = $infoLine[1].Trim() }
@@ -34,6 +55,31 @@ foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -
       }
    }
 
-   $string = 'copy "' + $file.FullName + '" "' + $destDir + $title + ' [' + $year + '] ' + $author + $file.Extension + '"'
-   Write-Host "-Cmd-" $string
+   $newFileName = ""
+   # Prepare new file name. Check data a little
+   if ([System.String]::IsNullOrWhiteSpace($title) -or $title -match '^\d+$') {
+      $newFileName = $destDir + $notRenamedFolder + "\" + $file.BaseName
+   }
+   else {
+      $newFileName = $title
+      if (-not [System.String]::IsNullOrWhiteSpace($year)) {
+         $newFileName = $newFileName + " [" + $year + "]"
+      }
+      if (-not [System.String]::IsNullOrWhiteSpace($author)) {
+         $newFileName = $newFileName + " " + $author
+      }
+      $newFileName = $destDir + $newFileName
+   }
+
+   $i = 0
+   $testExistance = $newFileName
+   while ([System.IO.File]::Exists($testExistance + $file.Extension)) {
+      $i++
+      $testExistance = $newFileName + "(" + $i + ")"
+   }
+   $newFileName = $testExistance + $file.Extension
+
+   Write-Host $file.FullName " -> " $newFileName
+
+   Copy-Item $file.FullName -Destination $newFileName
 }
