@@ -1,3 +1,13 @@
+# Start logging to file
+
+$path = Get-Location
+$scriptName = $MyInvocation.MyCommand.Name
+$scriptLog = "$path\$scriptName.log"
+if ([System.IO.File]::Exists($scriptLog)) {
+   Remove-Item -Path $scriptLog
+}
+Start-Transcript -Path $scriptLog
+
 # Source folder: where to get books
 $booksDir = "c:\Users\conma\OneDrive\Downloads\Telegram Desktop"
 # Destination folder: where to copy renamed books
@@ -34,7 +44,8 @@ $psi.RedirectStandardOutput = $true
 $psi.UseShellExecute = $false
 $psi.StandardOutputEncoding = $oldEnc
 
-foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -First 10) {
+#foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -First 10) {
+foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File) {
    # Start ebook-meta.exe to get file metadata
    $psi.Arguments = '"' + $file.FullName + '"'
    $proc = [System.Diagnostics.Process]::Start($psi)
@@ -72,6 +83,7 @@ foreach ($file in Get-ChildItem -Path $booksDir -Recurse -File | Select-Object -
       if (-not [System.String]::IsNullOrWhiteSpace($author)) {
          $newFileName = $newFileName + " " + $author
       }
+      $newFileName = $newFileName -replace '[<>:"/\\|?*]', ''
       $newFileName = $destDir + $newFileName
    }
 
